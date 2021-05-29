@@ -7,84 +7,24 @@ const config = require('./config/congif.js');
 var T = new Twitter(config);
 
 
-let botId = null;
+// Fethcing our Own user ID.
 
 const getBotId = async ()=>{
-    console.log("Let's find our own id");
     const result = await T.get('account/verify_credentials');
-    console.log("My id is");
-    console.log(result['data']['id_str']);
-    botId = result['data']['id_str'];
+    let botId = result['data']['id_str'];
+    return botId;
 };
 
-// T.post('statuses/update', { status: 'hello world! 👩‍💻' }, function (err, data, response) {
-//     console.log(data);
-//     console.log('Tweet has been tweeted');
-// })
-
-
-
-
-// T.get('search/tweets', { q: '#nodejs backend', count: 10 }, function (err, data, response) {
-//     console.log(data)
-// });
-
-
-queries = ['#javascript', '#100DaysOfCode']
-
-T.get('search/tweets', {
-    q: queries[1],
-    result_type: 'recent',
-    count: 2,
-    lang: 'en'
-}).then(async (result)=>{
+getBotId().then((ourBotId)=>{
+    let queries = ['#javascript', '#100DaysOfCode'];
+    console.log(ourBotId);
     
-    const resultTweets = result['data'].statuses;
-
-    for(tweet of resultTweets){
-
-        // T.post('statuses/retweet/:id', {id: tweet['id_str']})
-        // .catch((err)=>{
-        //     console.log('Something horrible happened');
-        //     console.log(err);
-        //     process.exit(1);
-        // })
-
-        if(botId === null){
-            getBotId().then(()=>{
-                likeATweet(tweet);
-            })
-        }else{
-            likeATweet(tweet);
-        }
-
-
-        
-
-        
-    }
-
-    
-}).catch((err)=>{
-    console.log('OOPS This went a bit rough.');
-    console.log(err);
 });
 
 
 
 
-// T.post('statuses/update', {
-//     status: 'Hello World :) ☕\n I am a bot created'+
-//      'by @trickybhai. Follow me for amazing tweets about JavaScript.'
-// }).then((result) => {
-//     console.log(result['data']);
-//     console.log('Tweeted Successfully');
-// }).catch((err)=>{
-//     console.log('OOPS an error occurred');
-//     console.log(err.stack);
-// })
-
-function likeATweet(tweet){
+function likeATweet(tweet, botId){
 
     console.log("before liking", botId);
 
@@ -93,4 +33,59 @@ function likeATweet(tweet){
             console.log("Oh damn, here we go again");
             console.log(err);
         });
+}
+
+
+function searchingForTweets(T, queries, botId){
+
+    return new Promise((resolve, reject)=>{
+        T.get('search/tweets', {
+            q: queries[1],
+            result_type: 'recent',
+            count: 1,
+            lang: 'en'
+        }).then(async (result) => {
+
+            const resultTweets = result['data'].statuses;
+           
+           resolve(resultTweets);
+
+        }).catch((err) => {
+            console.log('OOPS This went a bit rough.');
+            reject(err);
+        });
+    })
+}
+
+
+function postAStatus(T, status){
+    T.post('statuses/update', {
+        status: status
+    }).then((result) => {
+        console.log(result['data']);
+        console.log('Tweeted Successfully');
+    }).catch((err) => {
+        console.log('OOPS an error occurred');
+        console.log(err.stack);
+    })
+}
+
+
+function retweetATweet(T, tweet){
+    T.post('statuses/retweet/:id', { id: tweet['id_str'] })
+    .catch((err) => {
+        console.log('Something horrible happened');
+        console.log(err);
+        process.exit(1);
+    });
+}
+
+
+function searchAndRetweet(T, queries, ourBotId){
+    searchingForTweets(T, queries, ourBotId).then((resultTweets) => {
+        for (tweet of resultTweets) {
+
+            retweetATweet(T, tweet);
+        }
+    })
 }
